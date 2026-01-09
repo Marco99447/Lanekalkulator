@@ -700,6 +700,8 @@
             const loanCosts = currentMonthlyLoanCost;
             const liquidity = netIncome - budgetExpenses - loanCosts;
 
+            console.log('calculateLiquidity:', { netIncome, budgetExpenses, loanCosts, liquidity, currentBudgetTotal });
+
             document.getElementById('liquidityIncome').textContent = Math.round(netIncome).toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
             document.getElementById('liquidityBudget').textContent = Math.round(budgetExpenses).toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
             document.getElementById('liquidityLoan').textContent = Math.round(loanCosts).toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
@@ -1118,11 +1120,11 @@
 
         // Initialize
         updateAdultIncomeInputs();
-        // updateAdultInputs er allerede kalt fra updateAdultIncomeInputs
+        // updateAdultInputs er allerede kalt fra updateAdultIncomeInputs som kalles calculateBudget
         updateChildInputs();
         updateCarInputs();
-        // calculateBudget er allerede kalt fra updateAdultInputs
-        calculateLiquidity();
+        // calculateBudget er allerede kalt fra updateAdultInputs, men vi kaller det igjen for å sikre initialisering
+        calculateBudget();
 
         function drawLiquidityChart(income, budgetExpenses, loanCosts) {
             const ctx = document.getElementById('liquidityCanvas');
