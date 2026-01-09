@@ -938,11 +938,13 @@
 
             if (graceMonths > 0 && graceMonths < totalMonths) {
                 // Med avdragsfrihet: renter betales, men ingen avdrag
-                // Terminbeløp blir samme som normalt (siden saldoen aldri endres)
+                // Terminbeløp må beregnes for de resterende månedene etter grace period
+                const remainingMonths = totalMonths - graceMonths;
+                
                 if (monthlyRate === 0) {
-                    monthlyPayment = principal / totalMonths;
+                    monthlyPayment = principal / remainingMonths;
                 } else {
-                    monthlyPayment = principal * (monthlyRate * Math.pow(1 + monthlyRate, totalMonths)) / (Math.pow(1 + monthlyRate, totalMonths) - 1);
+                    monthlyPayment = principal * (monthlyRate * Math.pow(1 + monthlyRate, remainingMonths)) / (Math.pow(1 + monthlyRate, remainingMonths) - 1);
                 }
 
                 // Generer full nedbetalingsplan
@@ -1029,8 +1031,10 @@
             document.getElementById('monthlyPayment').textContent = Math.round(monthlyPayment + monthlyFee).toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
             
             if (graceMonths > 0) {
+                // Under grace: kun rente + gebyr
                 document.getElementById('monthlyPaymentAfterGrace').textContent = Math.round(monthlyInterestDuringGrace + monthlyFee).toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
             } else {
+                // Uten grace: samme som normal terminbeløp
                 document.getElementById('monthlyPaymentAfterGrace').textContent = Math.round(monthlyPayment + monthlyFee).toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
             }
             document.getElementById('totalInterest').textContent = Math.round(totalInterest).toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
