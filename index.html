@@ -520,7 +520,7 @@
 
                 <div class="form-group">
                     <label>Boligkostnader (kr/måned)</label>
-                    <input type="number" id="housing" value="4500" min="0" step="100">
+                    <input type="number" id="housing" value="4500" min="0" step="100" onchange="calculateBudget()">
                 </div>
 
                 <div class="form-group">
@@ -742,7 +742,6 @@
                 container.appendChild(group);
             }
             calculateBudget();
-            calculateTotalNetIncome();
         }
 
         function updateChildInputs() {
@@ -1119,10 +1118,10 @@
 
         // Initialize
         updateAdultIncomeInputs();
-        updateAdultInputs();
+        // updateAdultInputs er allerede kalt fra updateAdultIncomeInputs
         updateChildInputs();
         updateCarInputs();
-        calculateBudget();
+        // calculateBudget er allerede kalt fra updateAdultInputs
         calculateLiquidity();
 
         function drawLiquidityChart(income, budgetExpenses, loanCosts) {
