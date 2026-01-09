@@ -406,7 +406,7 @@
 
                 <div class="results" id="loanResults" style="display: none;">
                     <div class="result-item">
-                        <span class="result-label">Terminbeløp:</span>
+                        <span class="result-label">Terminbeløp (under avdragsfrihet):</span>
                         <span class="result-value" id="monthlyPayment">-</span>
                     </div>
                     <div class="result-item">
@@ -928,60 +928,113 @@
 
             const monthlyRate = annualRate / 100 / 12;
             const totalMonths = years * 12;
-
-            // Beregn terminbeløp med fast annuitetslån
-            let monthlyPayment;
-            if (monthlyRate === 0) {
-                monthlyPayment = principal / totalMonths;
-            } else {
-                monthlyPayment = principal * (monthlyRate * Math.pow(1 + monthlyRate, totalMonths)) / (Math.pow(1 + monthlyRate, totalMonths) - 1);
-            }
-
-            // Beregn totalrenter og gebyr
-            let totalInterest = 0;
-            let balance = principal;
             const repaymentSchedule = [];
 
-            for (let month = 1; month <= totalMonths; month++) {
-                const year = Math.ceil(month / 12);
-                const interest = balance * monthlyRate;
-                const principal_payment = monthlyPayment - interest;
-                const totalPayment = monthlyPayment + monthlyFee;
-                balance -= principal_payment;
+            // Beregn terminbeløp basert på om det er avdragsfrihet
+            let monthlyPayment = 0;
+            let monthlyPaymentDuringGrace = 0;
+            let balance = principal;
+            let totalInterest = 0;
 
-                if (balance < 0) balance = 0;
+            if (graceMonths > 0 && graceMonths < totalMonths) {
+                // Med avdragsfrihet: renter påløper, men ingen avdrag første periode
+                const remainingMonths = totalMonths - graceMonths;
+                
+                // Beregn saldo etter avdragsfriheten (renter er påløpt)
+                let graceBalance = principal;
+                for (let i = 0; i < graceMonths; i++) {
+                    const interest = graceBalance * monthlyRate;
+                    totalInterest += interest;
+                    graceBalance += interest;
+                }
 
-                repaymentSchedule.push({
-                    year: year,
-                    month: ((month - 1) % 12) + 1,
-                    principal: principal_payment,
-                    interest: interest,
-                    fee: monthlyFee,
-                    payment: totalPayment,
-                    balance: balance
-                });
+                // Beregn terminbeløp for de gjenværende månedene
+                if (monthlyRate === 0) {
+                    monthlyPayment = graceBalance / remainingMonths;
+                } else {
+                    monthlyPayment = graceBalance * (monthlyRate * Math.pow(1 + monthlyRate, remainingMonths)) / (Math.pow(1 + monthlyRate, remainingMonths) - 1);
+                }
+                monthlyPaymentDuringGrace = 0; // 0 avdrag under graceperiode
 
-                totalInterest += interest;
+                // Generer full nedbetalingsplan
+                balance = principal;
+                totalInterest = 0;
+
+                for (let month = 1; month <= totalMonths; month++) {
+                    const year = Math.ceil(month / 12);
+                    const monthInYear = ((month - 1) % 12) + 1;
+
+                    let interest, principal_payment, payment;
+
+                    if (month <= graceMonths) {
+                        // Avdragsfrihet periode - kun renter
+                        interest = balance * monthlyRate;
+                        principal_payment = 0;
+                        payment = monthlyFee; // Kun gebyr, ingen avdrag
+                        balance += interest;
+                    } else {
+                        // Normal nedbetalingsperiode
+                        interest = balance * monthlyRate;
+                        principal_payment = monthlyPayment - interest;
+                        payment = monthlyPayment + monthlyFee;
+                        balance -= principal_payment;
+                    }
+
+                    totalInterest += interest;
+                    if (balance < 0) balance = 0;
+
+                    repaymentSchedule.push({
+                        year: year,
+                        month: monthInYear,
+                        principal: principal_payment,
+                        interest: interest,
+                        fee: monthlyFee,
+                        payment: payment,
+                        balance: balance,
+                        isGracePeriod: month <= graceMonths
+                    });
+                }
+            } else {
+                // Uten avdragsfrihet - standard annuitetslån
+                if (monthlyRate === 0) {
+                    monthlyPayment = principal / totalMonths;
+                } else {
+                    monthlyPayment = principal * (monthlyRate * Math.pow(1 + monthlyRate, totalMonths)) / (Math.pow(1 + monthlyRate, totalMonths) - 1);
+                }
+
+                balance = principal;
+                totalInterest = 0;
+
+                for (let month = 1; month <= totalMonths; month++) {
+                    const year = Math.ceil(month / 12);
+                    const interest = balance * monthlyRate;
+                    const principal_payment = monthlyPayment - interest;
+                    const totalPayment = monthlyPayment + monthlyFee;
+                    balance -= principal_payment;
+
+                    totalInterest += interest;
+                    if (balance < 0) balance = 0;
+
+                    repaymentSchedule.push({
+                        year: year,
+                        month: ((month - 1) % 12) + 1,
+                        principal: principal_payment,
+                        interest: interest,
+                        fee: monthlyFee,
+                        payment: totalPayment,
+                        balance: balance,
+                        isGracePeriod: false
+                    });
+                }
             }
 
             const totalFees = setupFee + (monthlyFee * totalMonths);
             const totalCost = principal + totalInterest + totalFees;
 
-            // Beregn terminbeløp etter avdragsfrihet
-            let monthlyPaymentAfterGrace = monthlyPayment;
-            if (graceMonths > 0) {
-                const remainingMonths = totalMonths - graceMonths;
-                const graceBalance = principal + (principal * monthlyRate * graceMonths);
-                if (monthlyRate === 0) {
-                    monthlyPaymentAfterGrace = graceBalance / remainingMonths;
-                } else {
-                    monthlyPaymentAfterGrace = graceBalance * (monthlyRate * Math.pow(1 + monthlyRate, remainingMonths)) / (Math.pow(1 + monthlyRate, remainingMonths) - 1);
-                }
-            }
-
             // Vis resultater
-            document.getElementById('monthlyPayment').textContent = Math.round(monthlyPayment).toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
-            document.getElementById('monthlyPaymentAfterGrace').textContent = Math.round(monthlyPaymentAfterGrace).toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
+            const paymentDuringGrace = graceMonths > 0 ? monthlyFee : monthlyPayment;
+            document.getElementById('monthlyPayment').textContent = Math.round(paymentDuringGrace).toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
+            document.getElementById('monthlyPaymentAfterGrace').textContent = Math.round(monthlyPayment + monthlyFee).toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
             document.getElementById('totalInterest').textContent = Math.round(totalInterest).toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
             document.getElementById('totalFees').textContent = Math.round(totalFees).toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
             document.getElementById('totalCost').textContent = Math.round(totalCost).toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
@@ -996,11 +1049,12 @@
                 monthlyFee: monthlyFee,
                 gracePeriod: graceMonths,
                 monthlyPayment: monthlyPayment,
-                monthlyPaymentAfterGrace: monthlyPaymentAfterGrace
+                monthlyPaymentDuringGrace: monthlyPaymentDuringGrace,
+                totalInterest: totalInterest
             };
 
-            // Beregn total månedlig lånekostnad
-            const totalMonthlyLoanCost = monthlyPayment + monthlyFee;
+            // Beregn total månedlig lånekostnad (gjennomsnitt)
+            const totalMonthlyLoanCost = (monthlyPayment + monthlyFee);
             currentMonthlyLoanCost = totalMonthlyLoanCost;
             updateLiquidityDisplay();
         }
@@ -1034,56 +1088,133 @@
             tbody.innerHTML = '';
 
             const schedule = repaymentData.schedule;
-            let currentYear = 0;
-            let yearTotal = { principal: 0, interest: 0, fee: 0, payment: 0 };
+            const groupedByYear = {};
 
-            schedule.forEach((row, idx) => {
-                if (row.year !== currentYear && currentYear > 0) {
-                    // Insert year total row
-                    const yearRow = tbody.insertRow();
-                    yearRow.style.background = '#f0f0f0';
-                    yearRow.style.fontWeight = 'bold';
-                    yearRow.innerHTML = `
-                        <td colspan="2">År ${currentYear} - Total</td>
+            // Group schedule by year
+            schedule.forEach(row => {
+                if (!groupedByYear[row.year]) {
+                    groupedByYear[row.year] = [];
+                }
+                groupedByYear[row.year].push(row);
+            });
+
+            const years = Object.keys(groupedByYear).map(Number).sort((a, b) => a - b);
+
+            years.forEach((year, yearIndex) => {
+                const yearMonths = groupedByYear[year];
+                const isFirstYear = year === 1;
+
+                // Calculate year totals
+                const yearTotal = {
+                    principal: 0,
+                    interest: 0,
+                    fee: 0,
+                    payment: 0
+                };
+
+                yearMonths.forEach(row => {
+                    yearTotal.principal += row.principal;
+                    yearTotal.interest += row.interest;
+                    yearTotal.fee += row.fee;
+                    yearTotal.payment += row.payment;
+                });
+
+                if (isFirstYear) {
+                    // Year 1: Show all months
+                    yearMonths.forEach((row, monthIndex) => {
+                        const tr = tbody.insertRow();
+                        if (row.isGracePeriod) {
+                            tr.style.background = '#fff3cd';
+                        }
+                        tr.innerHTML = `
+                            <td>${row.year}</td>
+                            <td>${row.month}</td>
+                            <td>${row.principal.toLocaleString('no-NO', { maximumFractionDigits: 0 })}</td>
+                            <td>${row.interest.toLocaleString('no-NO', { maximumFractionDigits: 0 })}</td>
+                            <td>${row.fee.toLocaleString('no-NO', { maximumFractionDigits: 0 })}</td>
+                            <td>${row.payment.toLocaleString('no-NO', { maximumFractionDigits: 0 })}</td>
+                            <td>${row.balance.toLocaleString('no-NO', { maximumFractionDigits: 0 })}</td>
+                        `;
+                    });
+
+                    // Add year total row for Year 1
+                    const yearTotalRow = tbody.insertRow();
+                    yearTotalRow.style.background = '#f0f0f0';
+                    yearTotalRow.style.fontWeight = 'bold';
+                    yearTotalRow.innerHTML = `
+                        <td colspan="2">År 1 - Total</td>
                         <td>${yearTotal.principal.toLocaleString('no-NO', { maximumFractionDigits: 0 })}</td>
                         <td>${yearTotal.interest.toLocaleString('no-NO', { maximumFractionDigits: 0 })}</td>
                         <td>${yearTotal.fee.toLocaleString('no-NO', { maximumFractionDigits: 0 })}</td>
                         <td>${yearTotal.payment.toLocaleString('no-NO', { maximumFractionDigits: 0 })}</td>
-                        <td></td>
+                        <td>${yearMonths[yearMonths.length - 1].balance.toLocaleString('no-NO', { maximumFractionDigits: 0 })}</td>
                     `;
-                    yearTotal = { principal: 0, interest: 0, fee: 0, payment: 0 };
+                } else {
+                    // Other years: Collapsed, expandable
+                    const yearSummaryRow = tbody.insertRow();
+                    yearSummaryRow.style.background = '#e8e8e8';
+                    yearSummaryRow.style.fontWeight = 'bold';
+                    yearSummaryRow.style.cursor = 'pointer';
+                    yearSummaryRow.className = `year-summary year-${year}`;
+                    yearSummaryRow.id = `year-summary-${year}`;
+                    
+                    yearSummaryRow.innerHTML = `
+                        <td colspan="2">▼ År ${year}</td>
+                        <td>${yearTotal.principal.toLocaleString('no-NO', { maximumFractionDigits: 0 })}</td>
+                        <td>${yearTotal.interest.toLocaleString('no-NO', { maximumFractionDigits: 0 })}</td>
+                        <td>${yearTotal.fee.toLocaleString('no-NO', { maximumFractionDigits: 0 })}</td>
+                        <td>${yearTotal.payment.toLocaleString('no-NO', { maximumFractionDigits: 0 })}</td>
+                        <td>${yearMonths[yearMonths.length - 1].balance.toLocaleString('no-NO', { maximumFractionDigits: 0 })}</td>
+                    `;
+
+                    yearSummaryRow.style.setProperty('--year-id', year);
+
+                    // Add click handler to expand/collapse
+                    yearSummaryRow.addEventListener('click', function() {
+                        toggleYearDetails(year);
+                    });
+
+                    // Add hidden detail rows for this year
+                    yearMonths.forEach((row, monthIndex) => {
+                        const detailRow = tbody.insertRow();
+                        detailRow.className = `year-detail year-detail-${year}`;
+                        detailRow.style.display = 'none';
+                        if (row.isGracePeriod) {
+                            detailRow.style.background = '#fff3cd';
+                        }
+                        detailRow.innerHTML = `
+                            <td style="padding-left: 30px;">${row.year}</td>
+                            <td>${row.month}</td>
+                            <td>${row.principal.toLocaleString('no-NO', { maximumFractionDigits: 0 })}</td>
+                            <td>${row.interest.toLocaleString('no-NO', { maximumFractionDigits: 0 })}</td>
+                            <td>${row.fee.toLocaleString('no-NO', { maximumFractionDigits: 0 })}</td>
+                            <td>${row.payment.toLocaleString('no-NO', { maximumFractionDigits: 0 })}</td>
+                            <td>${row.balance.toLocaleString('no-NO', { maximumFractionDigits: 0 })}</td>
+                        `;
+                    });
                 }
+            });
+        }
 
-                currentYear = row.year;
-                yearTotal.principal += row.principal;
-                yearTotal.interest += row.interest;
-                yearTotal.fee += row.fee;
-                yearTotal.payment += row.payment;
+        function toggleYearDetails(year) {
+            const detailRows = document.querySelectorAll(`.year-detail-${year}`);
+            const yearSummaryRow = document.getElementById(`year-summary-${year}`);
+            const isVisible = detailRows[0].style.display !== 'none';
 
-                const tr = tbody.insertRow();
-                tr.innerHTML = `
-                    <td>${row.year}</td>
-                    <td>${row.month}</td>
-                    <td>${row.principal.toLocaleString('no-NO', { maximumFractionDigits: 0 })}</td>
-                    <td>${row.interest.toLocaleString('no-NO', { maximumFractionDigits: 0 })}</td>
-                    <td>${row.fee.toLocaleString('no-NO', { maximumFractionDigits: 0 })}</td>
-                    <td>${row.payment.toLocaleString('no-NO', { maximumFractionDigits: 0 })}</td>
-                    <td>${row.balance.toLocaleString('no-NO', { maximumFractionDigits: 0 })}</td>
-                `;
+            detailRows.forEach(row => {
+                row.style.display = isVisible ? 'none' : 'table-row';
             });
 
-            // Last year total
-            const yearRow = tbody.insertRow();
-            yearRow.style.background = '#f0f0f0';
-            yearRow.style.fontWeight = 'bold';
-            yearRow.innerHTML = `
-                <td colspan="2">År ${currentYear} - Total</td>
-                <td>${yearTotal.principal.toLocaleString('no-NO', { maximumFractionDigits: 0 })}</td>
-                <td>${yearTotal.interest.toLocaleString('no-NO', { maximumFractionDigits: 0 })}</td>
-                <td>${yearTotal.fee.toLocaleString('no-NO', { maximumFractionDigits: 0 })}</td>
-                <td>${yearTotal.payment.toLocaleString('no-NO', { maximumFractionDigits: 0 })}</td>
-                <td></td>
-            `;
+            // Update arrow indicator
+            const td = yearSummaryRow.querySelector('td');
+            const currentText = td.textContent;
+            if (isVisible) {
+                // Close it - change ▼ to ▶
+                td.textContent = '▶ År ' + year;
+            } else {
+                // Open it - change ▶ to ▼
+                td.textContent = '▼ År ' + year;
+            }
         }
 
         function drawRepaymentChart() {
