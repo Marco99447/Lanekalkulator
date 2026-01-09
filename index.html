@@ -970,13 +970,13 @@
                         // Avdragsfrihet periode - kun renter
                         interest = balance * monthlyRate;
                         principal_payment = 0;
-                        payment = monthlyFee; // Kun gebyr, ingen avdrag
+                        payment = monthlyFee + (month === 1 ? setupFee : 0); // Etableringsgebyr første måned
                         balance += interest;
                     } else {
                         // Normal nedbetalingsperiode
                         interest = balance * monthlyRate;
                         principal_payment = monthlyPayment - interest;
-                        payment = monthlyPayment + monthlyFee;
+                        payment = monthlyPayment + monthlyFee + (month === 1 ? setupFee : 0); // Etableringsgebyr første måned
                         balance -= principal_payment;
                     }
 
@@ -988,7 +988,7 @@
                         month: monthInYear,
                         principal: principal_payment,
                         interest: interest,
-                        fee: monthlyFee,
+                        fee: monthlyFee + (month === 1 ? setupFee : 0), // Inkluder etableringsgebyr i første måned
                         payment: payment,
                         balance: balance,
                         isGracePeriod: month <= graceMonths
@@ -1009,7 +1009,7 @@
                     const year = Math.ceil(month / 12);
                     const interest = balance * monthlyRate;
                     const principal_payment = monthlyPayment - interest;
-                    const totalPayment = monthlyPayment + monthlyFee;
+                    const totalPayment = monthlyPayment + monthlyFee + (month === 1 ? setupFee : 0); // Etableringsgebyr første måned
                     balance -= principal_payment;
 
                     totalInterest += interest;
@@ -1020,7 +1020,7 @@
                         month: ((month - 1) % 12) + 1,
                         principal: principal_payment,
                         interest: interest,
-                        fee: monthlyFee,
+                        fee: monthlyFee + (month === 1 ? setupFee : 0), // Inkluder etableringsgebyr i første måned
                         payment: totalPayment,
                         balance: balance,
                         isGracePeriod: false
