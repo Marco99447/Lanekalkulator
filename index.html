@@ -532,14 +532,14 @@
 
                 <div class="form-group">
                     <label>Antall barn</label>
-                    <input type="number" id="numChildren" value="1" min="0" max="6" onchange="updateChildInputs()">
+                    <input type="number" id="numChildren" value="0" min="0" max="6" onchange="updateChildInputs()">
                 </div>
 
                 <div id="childInputs"></div>
 
                 <div class="form-group">
                     <label>Antall biler</label>
-                    <input type="number" id="numCars" value="1" min="0" max="5" onchange="updateCarInputs()">
+                    <input type="number" id="numCars" value="0" min="0" max="5" onchange="updateCarInputs()">
                 </div>
 
                 <div id="carInputs"></div>
@@ -628,6 +628,8 @@
                 container.appendChild(group);
             }
 
+            // Oppdater budsjett-panelet når antall voksne endres
+            updateAdultInputs();
             calculateTotalNetIncome();
         }
 
