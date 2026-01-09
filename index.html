@@ -621,19 +621,19 @@
             const loanCosts = currentMonthlyLoanCost;
             const liquidity = netIncome - budgetExpenses - loanCosts;
 
-            document.getElementById('liquidityIncome').textContent = netIncome.toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
-            document.getElementById('liquidityBudget').textContent = budgetExpenses.toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
-            document.getElementById('liquidityLoan').textContent = loanCosts.toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
+            document.getElementById('liquidityIncome').textContent = Math.round(netIncome).toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
+            document.getElementById('liquidityBudget').textContent = Math.round(budgetExpenses).toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
+            document.getElementById('liquidityLoan').textContent = Math.round(loanCosts).toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
 
             const resultDiv = document.getElementById('liquiditySurplus');
-            resultDiv.textContent = liquidity.toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
+            resultDiv.textContent = Math.round(liquidity).toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
 
             if (liquidity > 0) {
                 resultDiv.style.color = '#10b981';
-                resultDiv.textContent = '✓ ' + liquidity.toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
+                resultDiv.textContent = '✓ ' + Math.round(liquidity).toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
             } else {
                 resultDiv.style.color = '#ef4444';
-                resultDiv.textContent = '✗ ' + Math.abs(liquidity).toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr underskudd';
+                resultDiv.textContent = '✗ ' + Math.abs(Math.round(liquidity)).toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr underskudd';
             }
 
             drawLiquidityChart(netIncome, budgetExpenses, loanCosts);
