@@ -20,14 +20,20 @@
         }
 
         .container {
-            max-width: 1400px;
+            max-width: 1600px;
             margin: 0 auto;
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: 1fr 1fr 1fr;
             gap: 20px;
         }
 
-        @media (max-width: 1024px) {
+        @media (max-width: 1400px) {
+            .container {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
             .container {
                 grid-template-columns: 1fr;
             }
@@ -332,6 +338,38 @@
 </head>
 <body>
     <div class="container">
+        <!-- INNTEKT & SKATT PANEL -->
+        <div class="panel">
+            <div class="panel-header blue">💵 Inntekt & Skatt</div>
+            <div class="panel-content">
+                <div class="form-group">
+                    <label>Månedslønn (kr)</label>
+                    <input type="number" id="monthlyIncome" value="50000" min="0" step="1000" onchange="calculateLiquidity()">
+                </div>
+
+                <div class="form-group">
+                    <label>Skatt (kr/måned)</label>
+                    <input type="number" id="taxAmount" value="10000" min="0" step="100" onchange="calculateLiquidity()">
+                </div>
+
+                <div class="form-group">
+                    <label>Skatt (%)</label>
+                    <input type="number" id="taxPercent" value="20" min="0" max="100" step="0.1" onchange="calculateLiquidity()">
+                </div>
+
+                <div class="results">
+                    <div class="result-item">
+                        <span class="result-label">Netto inntekt (måned):</span>
+                        <span class="result-value" id="netIncome">40000 kr</span>
+                    </div>
+                </div>
+
+                <div class="info-box">
+                    💡 Netto inntekt = Lønn - Skatt. Brukes til å beregne likviditetsoverskudd/underskudd.
+                </div>
+            </div>
+        </div>
+
         <!-- LÅNEKALKULATOR PANEL -->
         <div class="panel">
             <div class="panel-header blue">💰 Lånekalkulator</div>
@@ -444,6 +482,40 @@
             </div>
         </div>
 
+        <!-- LIKVIDITETS PANEL -->
+        <div class="panel">
+            <div class="panel-header blue">📈 Likviditets oversikt</div>
+            <div class="panel-content">
+                <div class="info-box">
+                    💡 Viser månedlig overskudd/underskudd basert på inntekt, utgifter og lånekostnader
+                </div>
+
+                <div class="results">
+                    <div class="result-item">
+                        <span class="result-label">Netto inntekt:</span>
+                        <span class="result-value" id="liquidityIncome">40000 kr</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Budsjett utgifter:</span>
+                        <span class="result-value" id="liquidityBudget">0 kr</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Lånekostnader:</span>
+                        <span class="result-value" id="liquidityLoan">0 kr</span>
+                    </div>
+                </div>
+
+                <div id="liquidityResult" style="background: #f0f0f0; border-radius: 8px; padding: 15px; margin-top: 15px; border-left: 4px solid #10b981;">
+                    <div style="font-weight: 600; color: #333; margin-bottom: 5px;">Månedlig likviditet:</div>
+                    <div style="font-size: 28px; font-weight: bold; color: #10b981;" id="liquiditySurplus">40000 kr</div>
+                </div>
+
+                <div id="liquidityChart" style="margin-top: 20px;">
+                    <canvas id="liquidityCanvas"></canvas>
+                </div>
+            </div>
+        </div>
+
         <!-- BUDSJETTALKULATOR PANEL -->
         <div class="panel">
             <div class="panel-header orange">📊 Budsjettalkulator (SIFO 2025)</div>
@@ -530,6 +602,42 @@
         };
 
         let repaymentData = null;
+        let currentBudgetTotal = 0;
+        let currentMonthlyLoanCost = 0;
+
+        function calculateNetIncome() {
+            const monthlyIncome = parseFloat(document.getElementById('monthlyIncome').value) || 0;
+            const taxAmount = parseFloat(document.getElementById('taxAmount').value) || 0;
+            const netIncome = monthlyIncome - taxAmount;
+            
+            document.getElementById('netIncome').textContent = netIncome.toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
+            
+            return netIncome;
+        }
+
+        function calculateLiquidity() {
+            const netIncome = calculateNetIncome();
+            const budgetExpenses = currentBudgetTotal;
+            const loanCosts = currentMonthlyLoanCost;
+            const liquidity = netIncome - budgetExpenses - loanCosts;
+
+            document.getElementById('liquidityIncome').textContent = netIncome.toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
+            document.getElementById('liquidityBudget').textContent = budgetExpenses.toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
+            document.getElementById('liquidityLoan').textContent = loanCosts.toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
+
+            const resultDiv = document.getElementById('liquiditySurplus');
+            resultDiv.textContent = liquidity.toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
+
+            if (liquidity > 0) {
+                resultDiv.style.color = '#10b981';
+                resultDiv.textContent = '✓ ' + liquidity.toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
+            } else {
+                resultDiv.style.color = '#ef4444';
+                resultDiv.textContent = '✗ ' + Math.abs(liquidity).toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr underskudd';
+            }
+
+            drawLiquidityChart(netIncome, budgetExpenses, loanCosts);
+        }
 
         function updateAdultInputs() {
             const numAdults = parseInt(document.getElementById('numAdults').value) || 1;
@@ -690,6 +798,10 @@
 
             document.getElementById('budgetItems').innerHTML = budgetItemsHtml;
             document.getElementById('totalBudget').textContent = totalBudget.toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
+
+            // Lagre total budsjett for likviditetsberegning
+            currentBudgetTotal = totalBudget;
+            calculateLiquidity();
         }
 
         function calculateLoan() {
@@ -777,8 +889,15 @@
                 principal: principal,
                 setupFee: setupFee,
                 monthlyFee: monthlyFee,
-                gracePeriod: graceMonths
+                gracePeriod: graceMonths,
+                monthlyPayment: monthlyPayment,
+                monthlyPaymentAfterGrace: monthlyPaymentAfterGrace
             };
+
+            // Beregn total månedlig lånekostnad
+            const totalMonthlyLoanCost = monthlyPayment + monthlyFee;
+            currentMonthlyLoanCost = totalMonthlyLoanCost;
+            calculateLiquidity();
         }
 
         function showRepaymentPlan() {
@@ -923,6 +1042,42 @@
         updateChildInputs();
         updateCarInputs();
         calculateBudget();
+        calculateLiquidity();
+
+        function drawLiquidityChart(income, budgetExpenses, loanCosts) {
+            const ctx = document.getElementById('liquidityCanvas');
+            if (!ctx) return;
+
+            const chartCtx = ctx.getContext('2d');
+
+            if (window.liquidityChartInstance) {
+                window.liquidityChartInstance.destroy();
+            }
+
+            window.liquidityChartInstance = new Chart(chartCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Disponibel', 'Budsjett', 'Lånekostnader'],
+                    datasets: [{
+                        data: [
+                            Math.max(income - budgetExpenses - loanCosts, 0),
+                            budgetExpenses,
+                            loanCosts
+                        ],
+                        backgroundColor: ['#10b981', '#f97316', '#ef4444'],
+                        borderColor: ['#ffffff', '#ffffff', '#ffffff'],
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    }
+                }
+            });
+        }
     </script>
 </body>
 </html>
