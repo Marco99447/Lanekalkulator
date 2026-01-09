@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lånekalkulator - SIFO 2025</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 1024px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .panel {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+
+        .panel-header {
+            padding: 20px;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .panel-header.blue {
+            background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+        }
+
+        .panel-header.orange {
+            background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%);
+        }
+
+        .panel-content {
+            padding: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(37, 99, 235, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .button-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        button.secondary {
+            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+        }
+
+        .results {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+            border-left: 4px solid #2563eb;
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .result-item:last-child {
+            border-bottom: none;
+        }
+
+        .result-label {
+            font-weight: 600;
+            color: #555;
+        }
+
+        .result-value {
+            color: #2563eb;
+            font-weight: bold;
+            font-size: 15px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #ddd;
+        }
+
+        .tab-button {
+            padding: 12px 20px;
+            background: none;
+            color: #666;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+            width: auto;
+        }
+
+        .tab-button:hover {
+            color: #2563eb;
+            transform: none;
+        }
+
+        .tab-button.active {
+            color: #2563eb;
+            border-bottom-color: #2563eb;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin: 20px 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            margin-top: 10px;
+        }
+
+        th {
+            background: #f0f0f0;
+            padding: 10px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid #ddd;
+        }
+
+        td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        tr:hover {
+            background: #f9f9f9;
+        }
+
+        .budget-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+            font-size: 14px;
+        }
+
+        .budget-item-label {
+            font-weight: 500;
+            color: #555;
+        }
+
+        .budget-item-value {
+            color: #2563eb;
+            font-weight: 600;
+        }
+
+        .budget-summary {
+            background: #f5f5f5;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+
+        .budget-summary h4 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .child-inputs {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .child-input-group {
+            background: #f9f9f9;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+        }
+
+        .child-input-group h5 {
+            margin-bottom: 5px;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .child-input-group select {
+            margin-bottom: 5px;
+            font-size: 12px;
+        }
+
+        .child-input-group select:last-child {
+            margin-bottom: 0;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2563eb;
+            padding: 12px;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #1565c0;
+            margin-bottom: 15px;
+        }
+
+        h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+
+        .add-button {
+            background: #10b981;
+            margin-top: 10px;
+        }
+
+        .add-button:hover {
+            box-shadow: 0 5px 20px rgba(16, 185, 129, 0.4);
+        }
+
+        .remove-button {
+            background: #ef4444;
+            padding: 8px 12px;
+            font-size: 12px;
+            width: auto;
+            margin-top: 5px;
+        }
+
+        .remove-button:hover {
+            box-shadow: 0 5px 20px rgba(239, 68, 68, 0.4);
+        }
+
+        .section-divider {
+            border-top: 2px solid #ddd;
+            margin: 20px 0;
+            padding-top: 20px;
+        }
+
+        .error-message {
+            background: #fee;
+            color: #c33;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- LÅNEKALKULATOR PANEL -->
+        <div class="panel">
+            <div class="panel-header blue">💰 Lånekalkulator</div>
+            <div class="panel-content">
+                <div class="error-message" id="loanError"></div>
+
+                <div class="form-group">
+                    <label>Lånebeløp (kr)</label>
+                    <input type="number" id="loanAmount" value="500000" min="10000" step="10000">
+                </div>
+
+                <div class="form-group">
+                    <label>Årlig rente (%)</label>
+                    <input type="number" id="interestRate" value="5.5" min="0" max="20" step="0.1">
+                </div>
+
+                <div class="form-group">
+                    <label>Låneperiode (år)</label>
+                    <input type="number" id="loanTerm" value="20" min="1" max="50">
+                </div>
+
+                <div class="section-divider"></div>
+
+                <div class="form-group">
+                    <label>Avdragsfrihet (måneder)</label>
+                    <input type="number" id="gracePeriod" value="0" min="0" max="60">
+                </div>
+
+                <div class="section-divider"></div>
+
+                <div class="form-group">
+                    <label>Etableringsgebyr (kr)</label>
+                    <input type="number" id="setupFee" value="5000" min="0" step="100">
+                </div>
+
+                <div class="form-group">
+                    <label>Termingebyr (kr/måned)</label>
+                    <input type="number" id="monthlyFee" value="49" min="0" step="1">
+                </div>
+
+                <button onclick="calculateLoan()">Beregn lån</button>
+
+                <div class="results" id="loanResults" style="display: none;">
+                    <div class="result-item">
+                        <span class="result-label">Terminbeløp:</span>
+                        <span class="result-value" id="monthlyPayment">-</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Terminbeløp (etter avdragsfrihet):</span>
+                        <span class="result-value" id="monthlyPaymentAfterGrace">-</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Rentekostnad:</span>
+                        <span class="result-value" id="totalInterest">-</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Gebyrbeløp:</span>
+                        <span class="result-value" id="totalFees">-</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Total kostnad:</span>
+                        <span class="result-value" id="totalCost">-</span>
+                    </div>
+                </div>
+
+                <button class="secondary" onclick="showRepaymentPlan()" style="margin-top: 15px; display: none;" id="repaymentBtn">Nedbetalingsplan</button>
+
+                <!-- NEDBETALINGSPLAN MODAL -->
+                <div id="repaymentModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; overflow-y: auto;">
+                    <div style="background: white; max-width: 1000px; margin: 20px auto; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+                        <div style="padding: 20px; background: #2563eb; color: white; font-weight: bold; font-size: 16px; display: flex; justify-content: space-between; align-items: center;">
+                            Nedbetalingsplan
+                            <button onclick="closeRepaymentPlan()" style="width: 40px; height: 40px; background: rgba(255,255,255,0.2); color: white; border: none; border-radius: 50%; cursor: pointer; font-size: 20px;">×</button>
+                        </div>
+
+                        <div style="padding: 20px;">
+                            <div class="tabs">
+                                <button class="tab-button active" onclick="switchTab('table', this)">Detaljert tabell</button>
+                                <button class="tab-button" onclick="switchTab('chart', this)">Avdrag/Renter</button>
+                            </div>
+
+                            <!-- TAB 1: Tabell -->
+                            <div class="tab-content active" id="tableTab">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>År</th>
+                                            <th>Mnd</th>
+                                            <th>Avdrag (kr)</th>
+                                            <th>Renter (kr)</th>
+                                            <th>Gebyr (kr)</th>
+                                            <th>Betaling (kr)</th>
+                                            <th>Gjenstår (kr)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="repaymentTableBody">
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- TAB 2: Avdrag/Renter Chart -->
+                            <div class="tab-content" id="chartTab">
+                                <div class="chart-container">
+                                    <canvas id="repaymentChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- BUDSJETTALKULATOR PANEL -->
+        <div class="panel">
+            <div class="panel-header orange">📊 Budsjettalkulator (SIFO 2025)</div>
+            <div class="panel-content">
+                <div class="info-box">
+                    💡 Basert på SIFO 2025 referansebudsjetter fra Statistisk sentralbyrå
+                </div>
+
+                <h2>Husholdning</h2>
+
+                <div class="form-group">
+                    <label>Boligkostnader (kr/måned)</label>
+                    <input type="number" id="housing" value="4500" min="0" step="100">
+                </div>
+
+                <div class="form-group">
+                    <label>Antall voksne</label>
+                    <input type="number" id="numAdults" value="2" min="1" max="4" onchange="updateAdultInputs()">
+                </div>
+
+                <div id="adultInputs"></div>
+
+                <div class="form-group">
+                    <label>Antall barn</label>
+                    <input type="number" id="numChildren" value="1" min="0" max="6" onchange="updateChildInputs()">
+                </div>
+
+                <div id="childInputs"></div>
+
+                <div class="form-group">
+                    <label>Antall biler</label>
+                    <input type="number" id="numCars" value="1" min="0" max="5" onchange="updateCarInputs()">
+                </div>
+
+                <div id="carInputs"></div>
+
+                <button onclick="calculateBudget()">Beregn budsjett</button>
+
+                <div class="budget-summary" id="budgetResults" style="display: none;">
+                    <h4>📈 Budsjettsammenligning</h4>
+                    <div id="budgetItems"></div>
+                    <div style="margin-top: 15px; padding-top: 15px; border-top: 2px solid #ddd;">
+                        <div class="budget-item">
+                            <span class="budget-item-label"><strong>Total månedlig utgift:</strong></span>
+                            <span class="budget-item-value"><strong id="totalBudget">0 kr</strong></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // SIFO 2025 DATA
+        const SIFO_DATA = {
+            mat: {
+                "6-11 mnd": 1280, "1 år": 1660, "2-5": 2210, "6-9": 2840,
+                "J 10-13": 3440, "G 10-13": 3530, "J 14-17": 3910, "G 14-17": 4470,
+                "K 18-30": 4280, "K 31-60": 4040, "K 61-74": 3720, "K 74+": 3360,
+                "M 18-30": 5080, "M 31-60": 4780, "M 61-74": 4200, "M 74+": 3900
+            },
+            klaer: {
+                "<1 år": 720, "1 år": 1120, "2-5": 880, "6-9": 990,
+                "J 10-13": 860, "G 10-13": 840, "J 14-17": 1010, "G 14-17": 990,
+                "K >17": 1070, "M >17": 1100
+            },
+            pleie: {
+                "<1 år": 510, "1-2": 610, "3": 360, "4-5": 230, "6-9": 260,
+                "J 10-13": 500, "G 10-13": 370, "J 14-17": 610, "G 14-17": 490,
+                "K 18-50": 990, "M >17": 800, "K >50": 950
+            },
+            lek: {
+                "<1 år": 160, "1-2": 380, "3-5": 790, "6-9": 1230,
+                "10-13": 1540, "14-17": 1650, ">17": 1060
+            },
+            andreVarer: { 1: 435, 2: 500, 3: 660, 4: 790, 5: 900, 6: 1020, 7: 1100 },
+            husholdningsartikler: { 1: 585, 2: 635, 3: 720, 4: 915, 5: 990, 6: 1070, 7: 1140 },
+            mobler: { 1: 565, 2: 625, 3: 760, 4: 980, 5: 1145, 6: 1375, 7: 1565 },
+            mediaOgFritid: { 1: 2520, 2: 2560, 3: 2700, 4: 2790, 5: 2820, 6: 2850, 7: 2850 },
+            bilkostnader: {
+                "Bensin": { "1-4": 3300, "5-7": 4990 },
+                "El-bil": { "1-4": 2195, "5-7": 3015 }
+            }
+        };
+
+        let repaymentData = null;
+
+        function updateAdultInputs() {
+            const numAdults = parseInt(document.getElementById('numAdults').value) || 1;
+            const container = document.getElementById('adultInputs');
+            container.innerHTML = '';
+
+            for (let i = 0; i < numAdults; i++) {
+                const group = document.createElement('div');
+                group.className = 'child-input-group';
+                group.innerHTML = `
+                    <h5>Voksen ${i + 1}</h5>
+                    <select id="adultGender${i}" onchange="calculateBudget()">
+                        <option value="K">Kvinne</option>
+                        <option value="M">Mann</option>
+                    </select>
+                    <select id="adultAge${i}" onchange="calculateBudget()">
+                        <option value="18-30">18-30 år</option>
+                        <option value="31-60">31-60 år</option>
+                        <option value="61-74">61-74 år</option>
+                        <option value="74+">74+ år</option>
+                    </select>
+                `;
+                container.appendChild(group);
+            }
+            calculateBudget();
+        }
+
+        function updateChildInputs() {
+            const numChildren = parseInt(document.getElementById('numChildren').value) || 0;
+            const container = document.getElementById('childInputs');
+            container.innerHTML = '';
+
+            if (numChildren === 0) return;
+
+            for (let i = 0; i < numChildren; i++) {
+                const group = document.createElement('div');
+                group.className = 'child-input-group';
+                group.innerHTML = `
+                    <h5>Barn ${i + 1}</h5>
+                    <select id="childGender${i}" onchange="calculateBudget()">
+                        <option value="G">Jente</option>
+                        <option value="J">Gutt</option>
+                    </select>
+                    <select id="childAge${i}" onchange="calculateBudget()">
+                        <option value="2-5">2-5 år</option>
+                        <option value="6-9">6-9 år</option>
+                        <option value="10-13">10-13 år</option>
+                        <option value="14-17">14-17 år</option>
+                    </select>
+                `;
+                container.appendChild(group);
+            }
+            calculateBudget();
+        }
+
+        function updateCarInputs() {
+            const numCars = parseInt(document.getElementById('numCars').value) || 0;
+            const container = document.getElementById('carInputs');
+            container.innerHTML = '';
+
+            if (numCars === 0) return;
+
+            for (let i = 0; i < numCars; i++) {
+                const group = document.createElement('div');
+                group.className = 'child-input-group';
+                group.innerHTML = `
+                    <h5>Bil ${i + 1}</h5>
+                    <select id="carType${i}" onchange="calculateBudget()">
+                        <option value="Bensin">Bensinbil</option>
+                        <option value="El-bil">El-bil</option>
+                    </select>
+                `;
+                container.appendChild(group);
+            }
+            calculateBudget();
+        }
+
+        function getMatBudget(alder, kjønn) {
+            if (alder.startsWith("K") || alder.startsWith("M")) return SIFO_DATA.mat[alder] || 0;
+            const key = `${kjønn} ${alder}`.replace("G ", "G ").replace("J ", "J ");
+            return SIFO_DATA.mat[key] || SIFO_DATA.mat[`${kjønn} 18-30`] || 0;
+        }
+
+        function getKlaerBudget(alder, kjønn) {
+            if (SIFO_DATA.klaer[alder]) return SIFO_DATA.klaer[alder];
+            return SIFO_DATA.klaer[`${kjønn} >17`] || 0;
+        }
+
+        function getLekBudget(alder) {
+            if (SIFO_DATA.lek[alder]) return SIFO_DATA.lek[alder];
+            return SIFO_DATA.lek[">17"] || 0;
+        }
+
+        function calculateBudget() {
+            const housing = parseFloat(document.getElementById('housing').value) || 0;
+            const numAdults = parseInt(document.getElementById('numAdults').value) || 1;
+            const numChildren = parseInt(document.getElementById('numChildren').value) || 0;
+            const numCars = parseInt(document.getElementById('numCars').value) || 0;
+
+            let totalBudget = housing;
+            const budgetBreakdown = {};
+
+            // Voksne
+            let matBudgetTotal = 0, klaerBudgetTotal = 0, pleieBudgetTotal = 0;
+
+            for (let i = 0; i < numAdults; i++) {
+                const gender = document.getElementById(`adultGender${i}`)?.value || 'K';
+                const age = document.getElementById(`adultAge${i}`)?.value || '18-30';
+                const key = `${gender} ${age}`;
+
+                matBudgetTotal += SIFO_DATA.mat[key] || 0;
+                klaerBudgetTotal += SIFO_DATA.klaer[`${gender} >17`] || 0;
+                pleieBudgetTotal += SIFO_DATA.pleie[`${gender === 'K' ? 'K' : 'M'} ${gender === 'K' ? (age.includes('18-30') || age.includes('31-60') ? '18-50' : '>50') : '>17'}`] || 0;
+            }
+
+            // Barn
+            for (let i = 0; i < numChildren; i++) {
+                const gender = document.getElementById(`childGender${i}`)?.value || 'G';
+                const age = document.getElementById(`childAge${i}`)?.value || '2-5';
+                const key = `${gender} ${age}`;
+
+                matBudgetTotal += SIFO_DATA.mat[key] || 0;
+                klaerBudgetTotal += SIFO_DATA.klaer[age] || 0;
+                pleieBudgetTotal += SIFO_DATA.pleie[age] || 0;
+            }
+
+            const totalPersons = numAdults + numChildren;
+            const husholdSize = Math.min(totalPersons, 7);
+
+            budgetBreakdown['Mat'] = matBudgetTotal;
+            budgetBreakdown['Klær'] = klaerBudgetTotal;
+            budgetBreakdown['Pleie'] = pleieBudgetTotal;
+            budgetBreakdown['Lek & media'] = (numChildren > 0 ? SIFO_DATA.lek["6-9"] * numChildren : 0);
+            budgetBreakdown['Andre dagligvarer'] = SIFO_DATA.andreVarer[husholdSize] || 0;
+            budgetBreakdown['Husholdningsartikler'] = SIFO_DATA.husholdningsartikler[husholdSize] || 0;
+            budgetBreakdown['Møbler'] = SIFO_DATA.mobler[husholdSize] || 0;
+            budgetBreakdown['Mediebruk & fritid'] = SIFO_DATA.mediaOgFritid[husholdSize] || 0;
+
+            let carBudget = 0;
+            for (let i = 0; i < numCars; i++) {
+                const carType = document.getElementById(`carType${i}`)?.value || 'Bensin';
+                const category = totalPersons <= 4 ? "1-4" : "5-7";
+                carBudget += SIFO_DATA.bilkostnader[carType][category] || 0;
+            }
+            budgetBreakdown['Bilkostnader'] = carBudget;
+
+            Object.values(budgetBreakdown).forEach(val => totalBudget += val);
+
+            // Vis resultat
+            document.getElementById('budgetResults').style.display = 'block';
+            const budgetItemsHtml = Object.entries(budgetBreakdown)
+                .map(([label, value]) => `
+                    <div class="budget-item">
+                        <span class="budget-item-label">${label}:</span>
+                        <span class="budget-item-value">${value.toLocaleString('no-NO', { minimumFractionDigits: 0 })} kr</span>
+                    </div>
+                `).join('');
+
+            document.getElementById('budgetItems').innerHTML = budgetItemsHtml;
+            document.getElementById('totalBudget').textContent = totalBudget.toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
+        }
+
+        function calculateLoan() {
+            const errorElement = document.getElementById('loanError');
+            errorElement.style.display = 'none';
+
+            const principal = parseFloat(document.getElementById('loanAmount').value);
+            const annualRate = parseFloat(document.getElementById('interestRate').value);
+            const years = parseInt(document.getElementById('loanTerm').value);
+            const graceMonths = parseInt(document.getElementById('gracePeriod').value);
+            const setupFee = parseFloat(document.getElementById('setupFee').value);
+            const monthlyFee = parseFloat(document.getElementById('monthlyFee').value);
+
+            if (!principal || !annualRate || !years) {
+                errorElement.textContent = 'Vennligst fyll inn alle obligatoriske felt';
+                errorElement.style.display = 'block';
+                return;
+            }
+
+            const monthlyRate = annualRate / 100 / 12;
+            const totalMonths = years * 12;
+
+            // Beregn terminbeløp med fast annuitetslån
+            let monthlyPayment;
+            if (monthlyRate === 0) {
+                monthlyPayment = principal / totalMonths;
+            } else {
+                monthlyPayment = principal * (monthlyRate * Math.pow(1 + monthlyRate, totalMonths)) / (Math.pow(1 + monthlyRate, totalMonths) - 1);
+            }
+
+            // Beregn totalrenter og gebyr
+            let totalInterest = 0;
+            let balance = principal;
+            const repaymentSchedule = [];
+
+            for (let month = 1; month <= totalMonths; month++) {
+                const year = Math.ceil(month / 12);
+                const interest = balance * monthlyRate;
+                const principal_payment = monthlyPayment - interest;
+                const totalPayment = monthlyPayment + monthlyFee;
+                balance -= principal_payment;
+
+                if (balance < 0) balance = 0;
+
+                repaymentSchedule.push({
+                    year: year,
+                    month: ((month - 1) % 12) + 1,
+                    principal: principal_payment,
+                    interest: interest,
+                    fee: monthlyFee,
+                    payment: totalPayment,
+                    balance: balance
+                });
+
+                totalInterest += interest;
+            }
+
+            const totalFees = setupFee + (monthlyFee * totalMonths);
+            const totalCost = principal + totalInterest + totalFees;
+
+            // Beregn terminbeløp etter avdragsfrihet
+            let monthlyPaymentAfterGrace = monthlyPayment;
+            if (graceMonths > 0) {
+                const remainingMonths = totalMonths - graceMonths;
+                const graceBalance = principal + (principal * monthlyRate * graceMonths);
+                if (monthlyRate === 0) {
+                    monthlyPaymentAfterGrace = graceBalance / remainingMonths;
+                } else {
+                    monthlyPaymentAfterGrace = graceBalance * (monthlyRate * Math.pow(1 + monthlyRate, remainingMonths)) / (Math.pow(1 + monthlyRate, remainingMonths) - 1);
+                }
+            }
+
+            // Vis resultater
+            document.getElementById('monthlyPayment').textContent = monthlyPayment.toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
+            document.getElementById('monthlyPaymentAfterGrace').textContent = monthlyPaymentAfterGrace.toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
+            document.getElementById('totalInterest').textContent = totalInterest.toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
+            document.getElementById('totalFees').textContent = totalFees.toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
+            document.getElementById('totalCost').textContent = totalCost.toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
+
+            document.getElementById('loanResults').style.display = 'block';
+            document.getElementById('repaymentBtn').style.display = 'block';
+
+            repaymentData = {
+                schedule: repaymentSchedule,
+                principal: principal,
+                setupFee: setupFee,
+                monthlyFee: monthlyFee,
+                gracePeriod: graceMonths
+            };
+        }
+
+        function showRepaymentPlan() {
+            if (!repaymentData) return;
+
+            document.getElementById('repaymentModal').style.display = 'block';
+            populateRepaymentTable();
+            drawRepaymentChart();
+        }
+
+        function closeRepaymentPlan() {
+            document.getElementById('repaymentModal').style.display = 'none';
+        }
+
+        function switchTab(tabName, button) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+
+            document.getElementById(tabName + 'Tab').classList.add('active');
+            button.classList.add('active');
+
+            if (tabName === 'chart') {
+                setTimeout(() => drawRepaymentChart(), 100);
+            }
+        }
+
+        function populateRepaymentTable() {
+            const tbody = document.getElementById('repaymentTableBody');
+            tbody.innerHTML = '';
+
+            const schedule = repaymentData.schedule;
+            let currentYear = 0;
+            let yearTotal = { principal: 0, interest: 0, fee: 0, payment: 0 };
+
+            schedule.forEach((row, idx) => {
+                if (row.year !== currentYear && currentYear > 0) {
+                    // Insert year total row
+                    const yearRow = tbody.insertRow();
+                    yearRow.style.background = '#f0f0f0';
+                    yearRow.style.fontWeight = 'bold';
+                    yearRow.innerHTML = `
+                        <td colspan="2">År ${currentYear} - Total</td>
+                        <td>${yearTotal.principal.toLocaleString('no-NO', { maximumFractionDigits: 0 })}</td>
+                        <td>${yearTotal.interest.toLocaleString('no-NO', { maximumFractionDigits: 0 })}</td>
+                        <td>${yearTotal.fee.toLocaleString('no-NO', { maximumFractionDigits: 0 })}</td>
+                        <td>${yearTotal.payment.toLocaleString('no-NO', { maximumFractionDigits: 0 })}</td>
+                        <td></td>
+                    `;
+                    yearTotal = { principal: 0, interest: 0, fee: 0, payment: 0 };
+                }
+
+                currentYear = row.year;
+                yearTotal.principal += row.principal;
+                yearTotal.interest += row.interest;
+                yearTotal.fee += row.fee;
+                yearTotal.payment += row.payment;
+
+                const tr = tbody.insertRow();
+                tr.innerHTML = `
+                    <td>${row.year}</td>
+                    <td>${row.month}</td>
+                    <td>${row.principal.toLocaleString('no-NO', { maximumFractionDigits: 0 })}</td>
+                    <td>${row.interest.toLocaleString('no-NO', { maximumFractionDigits: 0 })}</td>
+                    <td>${row.fee.toLocaleString('no-NO', { maximumFractionDigits: 0 })}</td>
+                    <td>${row.payment.toLocaleString('no-NO', { maximumFractionDigits: 0 })}</td>
+                    <td>${row.balance.toLocaleString('no-NO', { maximumFractionDigits: 0 })}</td>
+                `;
+            });
+
+            // Last year total
+            const yearRow = tbody.insertRow();
+            yearRow.style.background = '#f0f0f0';
+            yearRow.style.fontWeight = 'bold';
+            yearRow.innerHTML = `
+                <td colspan="2">År ${currentYear} - Total</td>
+                <td>${yearTotal.principal.toLocaleString('no-NO', { maximumFractionDigits: 0 })}</td>
+                <td>${yearTotal.interest.toLocaleString('no-NO', { maximumFractionDigits: 0 })}</td>
+                <td>${yearTotal.fee.toLocaleString('no-NO', { maximumFractionDigits: 0 })}</td>
+                <td>${yearTotal.payment.toLocaleString('no-NO', { maximumFractionDigits: 0 })}</td>
+                <td></td>
+            `;
+        }
+
+        function drawRepaymentChart() {
+            const schedule = repaymentData.schedule;
+            const yearlyData = {};
+
+            schedule.forEach(row => {
+                if (!yearlyData[row.year]) {
+                    yearlyData[row.year] = { principal: 0, interest: 0 };
+                }
+                yearlyData[row.year].principal += row.principal;
+                yearlyData[row.year].interest += row.interest;
+            });
+
+            const years = Object.keys(yearlyData).map(Number).sort((a, b) => a - b);
+            const principals = years.map(y => yearlyData[y].principal);
+            const interests = years.map(y => yearlyData[y].interest);
+
+            const ctx = document.getElementById('repaymentChart').getContext('2d');
+            
+            if (window.repaymentChartInstance) {
+                window.repaymentChartInstance.destroy();
+            }
+
+            window.repaymentChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: years.map(y => `År ${y}`),
+                    datasets: [
+                        {
+                            label: 'Avdrag (kr)',
+                            data: principals,
+                            backgroundColor: '#10b981',
+                            order: 1
+                        },
+                        {
+                            label: 'Renter (kr)',
+                            data: interests,
+                            backgroundColor: '#ef4444',
+                            order: 2
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    indexAxis: 'x',
+                    scales: {
+                        x: { stacked: true },
+                        y: { stacked: true }
+                    },
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    }
+                }
+            });
+        }
+
+        // Initialize
+        updateAdultInputs();
+        updateChildInputs();
+        updateCarInputs();
+        calculateBudget();
+    </script>
+</body>
+</html>
