@@ -406,11 +406,11 @@
 
                 <div class="results" id="loanResults" style="display: none;">
                     <div class="result-item">
-                        <span class="result-label">Terminbeløp (under avdragsfrihet):</span>
+                        <span class="result-label">Terminbeløp (avdrag + renter + gebyr):</span>
                         <span class="result-value" id="monthlyPayment">-</span>
                     </div>
                     <div class="result-item">
-                        <span class="result-label">Terminbeløp (etter avdragsfrihet):</span>
+                        <span class="result-label">Beløp under avdragsfrihet (renter + gebyr):</span>
                         <span class="result-value" id="monthlyPaymentAfterGrace">-</span>
                     </div>
                     <div class="result-item">
@@ -937,24 +937,13 @@
             let totalInterest = 0;
 
             if (graceMonths > 0 && graceMonths < totalMonths) {
-                // Med avdragsfrihet: renter påløper, men ingen avdrag første periode
-                const remainingMonths = totalMonths - graceMonths;
-                
-                // Beregn saldo etter avdragsfriheten (renter er påløpt)
-                let graceBalance = principal;
-                for (let i = 0; i < graceMonths; i++) {
-                    const interest = graceBalance * monthlyRate;
-                    totalInterest += interest;
-                    graceBalance += interest;
-                }
-
-                // Beregn terminbeløp for de gjenværende månedene
+                // Med avdragsfrihet: renter betales, men ingen avdrag
+                // Terminbeløp blir samme som normalt (siden saldoen aldri endres)
                 if (monthlyRate === 0) {
-                    monthlyPayment = graceBalance / remainingMonths;
+                    monthlyPayment = principal / totalMonths;
                 } else {
-                    monthlyPayment = graceBalance * (monthlyRate * Math.pow(1 + monthlyRate, remainingMonths)) / (Math.pow(1 + monthlyRate, remainingMonths) - 1);
+                    monthlyPayment = principal * (monthlyRate * Math.pow(1 + monthlyRate, totalMonths)) / (Math.pow(1 + monthlyRate, totalMonths) - 1);
                 }
-                monthlyPaymentDuringGrace = 0; // 0 avdrag under graceperiode
 
                 // Generer full nedbetalingsplan
                 balance = principal;
@@ -967,16 +956,17 @@
                     let interest, principal_payment, payment;
 
                     if (month <= graceMonths) {
-                        // Avdragsfrihet periode - kun renter
+                        // Avdragsfriheit periode - renter betales, ingen avdrag
+                        // Saldoen forblir konstant
                         interest = balance * monthlyRate;
                         principal_payment = 0;
-                        payment = monthlyFee + (month === 1 ? setupFee : 0); // Etableringsgebyr første måned
-                        balance += interest;
+                        payment = interest + monthlyFee + (month === 1 ? setupFee : 0); // Renter + gebyr
+                        // balance endres IKKE - renten betales
                     } else {
                         // Normal nedbetalingsperiode
                         interest = balance * monthlyRate;
                         principal_payment = monthlyPayment - interest;
-                        payment = monthlyPayment + monthlyFee + (month === 1 ? setupFee : 0); // Etableringsgebyr første måned
+                        payment = monthlyPayment + monthlyFee + (month === 1 ? setupFee : 0);
                         balance -= principal_payment;
                     }
 
@@ -988,7 +978,7 @@
                         month: monthInYear,
                         principal: principal_payment,
                         interest: interest,
-                        fee: monthlyFee + (month === 1 ? setupFee : 0), // Inkluder etableringsgebyr i første måned
+                        fee: monthlyFee + (month === 1 ? setupFee : 0),
                         payment: payment,
                         balance: balance,
                         isGracePeriod: month <= graceMonths
@@ -1032,9 +1022,17 @@
             const totalCost = principal + totalInterest + totalFees;
 
             // Vis resultater
-            const paymentDuringGrace = graceMonths > 0 ? monthlyFee : monthlyPayment;
-            document.getElementById('monthlyPayment').textContent = Math.round(paymentDuringGrace).toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
-            document.getElementById('monthlyPaymentAfterGrace').textContent = Math.round(monthlyPayment + monthlyFee).toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
+            // Hvis grace period: viser månedlig rente som betales under grace, og normal terminbeløp etter
+            // Hvis ingen grace period: viser normal terminbeløp
+            const monthlyInterestDuringGrace = graceMonths > 0 ? (principal * monthlyRate) : 0;
+            
+            document.getElementById('monthlyPayment').textContent = Math.round(monthlyPayment + monthlyFee).toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
+            
+            if (graceMonths > 0) {
+                document.getElementById('monthlyPaymentAfterGrace').textContent = Math.round(monthlyInterestDuringGrace + monthlyFee).toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
+            } else {
+                document.getElementById('monthlyPaymentAfterGrace').textContent = Math.round(monthlyPayment + monthlyFee).toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
+            }
             document.getElementById('totalInterest').textContent = Math.round(totalInterest).toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
             document.getElementById('totalFees').textContent = Math.round(totalFees).toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
             document.getElementById('totalCost').textContent = Math.round(totalCost).toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
