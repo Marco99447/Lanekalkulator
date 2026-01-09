@@ -343,24 +343,16 @@
             <div class="panel-header blue">💵 Inntekt & Skatt</div>
             <div class="panel-content">
                 <div class="form-group">
-                    <label>Månedslønn (kr)</label>
-                    <input type="number" id="monthlyIncome" value="50000" min="0" step="1000" onchange="calculateLiquidity()">
+                    <label>Antall voksne i husstanden</label>
+                    <input type="number" id="numAdultsIncome" value="1" min="1" max="4" onchange="updateAdultIncomeInputs(); updateAdultInputs();">
                 </div>
 
-                <div class="form-group">
-                    <label>Skatt (kr/måned)</label>
-                    <input type="number" id="taxAmount" value="0" min="0" step="100" onchange="handleTaxInput()" id="taxAmountInput">
-                </div>
-
-                <div class="form-group">
-                    <label>Skatt (%)</label>
-                    <input type="number" id="taxPercent" value="0" min="0" max="100" step="0.1" onchange="handleTaxPercentInput()" id="taxPercentInput">
-                </div>
+                <div id="adultIncomeInputs"></div>
 
                 <div class="results">
                     <div class="result-item">
-                        <span class="result-label">Netto inntekt (måned):</span>
-                        <span class="result-value" id="netIncome">50000 kr</span>
+                        <span class="result-label">Total netto inntekt:</span>
+                        <span class="result-value" id="totalNetIncome">50000 kr</span>
                     </div>
                 </div>
 
@@ -605,67 +597,103 @@
         let currentBudgetTotal = 0;
         let currentMonthlyLoanCost = 0;
 
-        function handleTaxInput() {
-            const taxAmount = parseFloat(document.getElementById('taxAmount').value) || 0;
-            const taxPercentInput = document.getElementById('taxPercent');
+        function updateAdultIncomeInputs() {
+            const numAdults = parseInt(document.getElementById('numAdultsIncome').value) || 1;
+            const container = document.getElementById('adultIncomeInputs');
+            container.innerHTML = '';
+
+            for (let i = 0; i < numAdults; i++) {
+                const group = document.createElement('div');
+                group.style.background = '#f9f9f9';
+                group.style.padding = '12px';
+                group.style.borderRadius = '6px';
+                group.style.marginBottom = '10px';
+                group.style.border = '1px solid #ddd';
+
+                group.innerHTML = `
+                    <h5 style="margin-bottom: 8px; font-size: 13px; color: #666;">Voksen ${i + 1}</h5>
+                    <div class="form-group" style="margin-bottom: 8px;">
+                        <label style="margin-bottom: 3px; font-size: 13px;">Månedslønn (kr)</label>
+                        <input type="number" id="adultIncome${i}" value="50000" min="0" step="1000" onchange="calculateTotalNetIncome()">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 8px;">
+                        <label style="margin-bottom: 3px; font-size: 13px;">Skatt (kr/måned)</label>
+                        <input type="number" id="adultTaxAmount${i}" value="0" min="0" step="100" onchange="handleAdultTaxInput(${i})" style="font-size: 13px;">
+                    </div>
+                    <div class="form-group">
+                        <label style="margin-bottom: 3px; font-size: 13px;">Skatt (%)</label>
+                        <input type="number" id="adultTaxPercent${i}" value="0" min="0" max="100" step="0.1" onchange="handleAdultTaxPercentInput(${i})" style="font-size: 13px;">
+                    </div>
+                `;
+                container.appendChild(group);
+            }
+
+            calculateTotalNetIncome();
+        }
+
+        function handleAdultTaxInput(index) {
+            const taxAmount = parseFloat(document.getElementById(`adultTaxAmount${index}`).value) || 0;
+            const taxPercentInput = document.getElementById(`adultTaxPercent${index}`);
             
             if (taxAmount > 0) {
-                // Deaktiver prosent-input
                 taxPercentInput.disabled = true;
                 taxPercentInput.value = 0;
                 taxPercentInput.style.opacity = '0.5';
                 taxPercentInput.style.cursor = 'not-allowed';
             } else {
-                // Aktiver prosent-input
                 taxPercentInput.disabled = false;
                 taxPercentInput.style.opacity = '1';
                 taxPercentInput.style.cursor = 'text';
             }
             
-            calculateLiquidity();
+            calculateTotalNetIncome();
         }
 
-        function handleTaxPercentInput() {
-            const taxPercent = parseFloat(document.getElementById('taxPercent').value) || 0;
-            const taxAmountInput = document.getElementById('taxAmount');
+        function handleAdultTaxPercentInput(index) {
+            const taxPercent = parseFloat(document.getElementById(`adultTaxPercent${index}`).value) || 0;
+            const taxAmountInput = document.getElementById(`adultTaxAmount${index}`);
             
             if (taxPercent > 0) {
-                // Deaktiver kr-input
                 taxAmountInput.disabled = true;
                 taxAmountInput.value = 0;
                 taxAmountInput.style.opacity = '0.5';
                 taxAmountInput.style.cursor = 'not-allowed';
             } else {
-                // Aktiver kr-input
                 taxAmountInput.disabled = false;
                 taxAmountInput.style.opacity = '1';
                 taxAmountInput.style.cursor = 'text';
             }
             
-            calculateLiquidity();
+            calculateTotalNetIncome();
         }
 
-        function calculateNetIncome() {
-            const monthlyIncome = parseFloat(document.getElementById('monthlyIncome').value) || 0;
-            const taxAmount = parseFloat(document.getElementById('taxAmount').value) || 0;
-            const taxPercent = parseFloat(document.getElementById('taxPercent').value) || 0;
-            
-            let calculatedTax = 0;
-            if (taxAmount > 0) {
-                calculatedTax = taxAmount;
-            } else if (taxPercent > 0) {
-                calculatedTax = monthlyIncome * (taxPercent / 100);
+        function calculateTotalNetIncome() {
+            const numAdults = parseInt(document.getElementById('numAdultsIncome').value) || 1;
+            let totalNetIncome = 0;
+
+            for (let i = 0; i < numAdults; i++) {
+                const income = parseFloat(document.getElementById(`adultIncome${i}`).value) || 0;
+                const taxAmount = parseFloat(document.getElementById(`adultTaxAmount${i}`).value) || 0;
+                const taxPercent = parseFloat(document.getElementById(`adultTaxPercent${i}`).value) || 0;
+
+                let tax = 0;
+                if (taxAmount > 0) {
+                    tax = taxAmount;
+                } else if (taxPercent > 0) {
+                    tax = income * (taxPercent / 100);
+                }
+
+                totalNetIncome += (income - tax);
             }
-            
-            const netIncome = monthlyIncome - calculatedTax;
-            
-            document.getElementById('netIncome').textContent = Math.round(netIncome).toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
-            
-            return netIncome;
+
+            document.getElementById('totalNetIncome').textContent = Math.round(totalNetIncome).toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
+            calculateLiquidity();
+
+            return totalNetIncome;
         }
 
         function calculateLiquidity() {
-            const netIncome = calculateNetIncome();
+            const netIncome = calculateTotalNetIncome();
             const budgetExpenses = currentBudgetTotal;
             const loanCosts = currentMonthlyLoanCost;
             const liquidity = netIncome - budgetExpenses - loanCosts;
@@ -689,7 +717,7 @@
         }
 
         function updateAdultInputs() {
-            const numAdults = parseInt(document.getElementById('numAdults').value) || 1;
+            const numAdults = parseInt(document.getElementById('numAdultsIncome').value) || 1;
             const container = document.getElementById('adultInputs');
             container.innerHTML = '';
 
@@ -782,7 +810,7 @@
 
         function calculateBudget() {
             const housing = parseFloat(document.getElementById('housing').value) || 0;
-            const numAdults = parseInt(document.getElementById('numAdults').value) || 1;
+            const numAdults = parseInt(document.getElementById('numAdultsIncome').value) || 1;
             const numChildren = parseInt(document.getElementById('numChildren').value) || 0;
             const numCars = parseInt(document.getElementById('numCars').value) || 0;
 
@@ -924,11 +952,11 @@
             }
 
             // Vis resultater
-            document.getElementById('monthlyPayment').textContent = monthlyPayment.toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
-            document.getElementById('monthlyPaymentAfterGrace').textContent = monthlyPaymentAfterGrace.toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
-            document.getElementById('totalInterest').textContent = totalInterest.toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
-            document.getElementById('totalFees').textContent = totalFees.toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
-            document.getElementById('totalCost').textContent = totalCost.toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
+            document.getElementById('monthlyPayment').textContent = Math.round(monthlyPayment).toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
+            document.getElementById('monthlyPaymentAfterGrace').textContent = Math.round(monthlyPaymentAfterGrace).toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
+            document.getElementById('totalInterest').textContent = Math.round(totalInterest).toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
+            document.getElementById('totalFees').textContent = Math.round(totalFees).toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
+            document.getElementById('totalCost').textContent = Math.round(totalCost).toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
 
             document.getElementById('loanResults').style.display = 'block';
             document.getElementById('repaymentBtn').style.display = 'block';
@@ -1087,8 +1115,7 @@
         }
 
         // Initialize
-        handleTaxInput();
-        handleTaxPercentInput();
+        updateAdultIncomeInputs();
         updateAdultInputs();
         updateChildInputs();
         updateCarInputs();
