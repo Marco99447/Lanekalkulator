@@ -349,18 +349,18 @@
 
                 <div class="form-group">
                     <label>Skatt (kr/måned)</label>
-                    <input type="number" id="taxAmount" value="10000" min="0" step="100" onchange="calculateLiquidity()">
+                    <input type="number" id="taxAmount" value="0" min="0" step="100" onchange="handleTaxInput()" id="taxAmountInput">
                 </div>
 
                 <div class="form-group">
                     <label>Skatt (%)</label>
-                    <input type="number" id="taxPercent" value="20" min="0" max="100" step="0.1" onchange="calculateLiquidity()">
+                    <input type="number" id="taxPercent" value="0" min="0" max="100" step="0.1" onchange="handleTaxPercentInput()" id="taxPercentInput">
                 </div>
 
                 <div class="results">
                     <div class="result-item">
                         <span class="result-label">Netto inntekt (måned):</span>
-                        <span class="result-value" id="netIncome">40000 kr</span>
+                        <span class="result-value" id="netIncome">50000 kr</span>
                     </div>
                 </div>
 
@@ -605,12 +605,61 @@
         let currentBudgetTotal = 0;
         let currentMonthlyLoanCost = 0;
 
+        function handleTaxInput() {
+            const taxAmount = parseFloat(document.getElementById('taxAmount').value) || 0;
+            const taxPercentInput = document.getElementById('taxPercent');
+            
+            if (taxAmount > 0) {
+                // Deaktiver prosent-input
+                taxPercentInput.disabled = true;
+                taxPercentInput.value = 0;
+                taxPercentInput.style.opacity = '0.5';
+                taxPercentInput.style.cursor = 'not-allowed';
+            } else {
+                // Aktiver prosent-input
+                taxPercentInput.disabled = false;
+                taxPercentInput.style.opacity = '1';
+                taxPercentInput.style.cursor = 'text';
+            }
+            
+            calculateLiquidity();
+        }
+
+        function handleTaxPercentInput() {
+            const taxPercent = parseFloat(document.getElementById('taxPercent').value) || 0;
+            const taxAmountInput = document.getElementById('taxAmount');
+            
+            if (taxPercent > 0) {
+                // Deaktiver kr-input
+                taxAmountInput.disabled = true;
+                taxAmountInput.value = 0;
+                taxAmountInput.style.opacity = '0.5';
+                taxAmountInput.style.cursor = 'not-allowed';
+            } else {
+                // Aktiver kr-input
+                taxAmountInput.disabled = false;
+                taxAmountInput.style.opacity = '1';
+                taxAmountInput.style.cursor = 'text';
+            }
+            
+            calculateLiquidity();
+        }
+
         function calculateNetIncome() {
             const monthlyIncome = parseFloat(document.getElementById('monthlyIncome').value) || 0;
             const taxAmount = parseFloat(document.getElementById('taxAmount').value) || 0;
-            const netIncome = monthlyIncome - taxAmount;
+            const taxPercent = parseFloat(document.getElementById('taxPercent').value) || 0;
             
-            document.getElementById('netIncome').textContent = netIncome.toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
+            let calculatedTax = 0;
+            if (taxAmount > 0) {
+                calculatedTax = taxAmount;
+            } else if (taxPercent > 0) {
+                calculatedTax = monthlyIncome * (taxPercent / 100);
+            }
+            
+            const netIncome = monthlyIncome - calculatedTax;
+            
+            document.getElementById('netIncome').textContent = Math.round(netIncome).toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
             
             return netIncome;
         }
@@ -1038,6 +1087,8 @@
         }
 
         // Initialize
+        handleTaxInput();
+        handleTaxPercentInput();
         updateAdultInputs();
         updateChildInputs();
         updateCarInputs();
