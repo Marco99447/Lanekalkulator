@@ -614,15 +614,15 @@
                     <h5 style="margin-bottom: 8px; font-size: 13px; color: #666;">Voksen ${i + 1}</h5>
                     <div class="form-group" style="margin-bottom: 8px;">
                         <label style="margin-bottom: 3px; font-size: 13px;">Månedslønn (kr)</label>
-                        <input type="number" id="adultIncome${i}" value="50000" min="0" step="1000" onchange="calculateTotalNetIncome(); calculateBudget();">
+                        <input type="number" id="adultIncome${i}" value="50000" min="0" step="1000" onchange="updateLiquidityDisplay();">
                     </div>
                     <div class="form-group" style="margin-bottom: 8px;">
                         <label style="margin-bottom: 3px; font-size: 13px;">Skatt (kr/måned)</label>
-                        <input type="number" id="adultTaxAmount${i}" value="0" min="0" step="100" onchange="handleAdultTaxInput(${i}); calculateBudget();" style="font-size: 13px;">
+                        <input type="number" id="adultTaxAmount${i}" value="0" min="0" step="100" onchange="handleAdultTaxInput(${i});" style="font-size: 13px;">
                     </div>
                     <div class="form-group">
                         <label style="margin-bottom: 3px; font-size: 13px;">Skatt (%)</label>
-                        <input type="number" id="adultTaxPercent${i}" value="0" min="0" max="100" step="0.1" onchange="handleAdultTaxPercentInput(${i}); calculateBudget();" style="font-size: 13px;">
+                        <input type="number" id="adultTaxPercent${i}" value="0" min="0" max="100" step="0.1" onchange="handleAdultTaxPercentInput(${i});" style="font-size: 13px;">
                     </div>
                 `;
                 container.appendChild(group);
@@ -630,7 +630,32 @@
 
             // Oppdater budsjett-panelet når antall voksne endres
             updateAdultInputs();
-            // calculateTotalNetIncome vil bli kalt fra calculateBudget()
+        }
+
+        function updateLiquidityDisplay() {
+            const netIncome = calculateTotalNetIncome();
+            const budgetExpenses = currentBudgetTotal;
+            const loanCosts = currentMonthlyLoanCost;
+            const liquidity = netIncome - budgetExpenses - loanCosts;
+
+            document.getElementById('liquidityIncome').textContent = Math.round(netIncome).toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
+            document.getElementById('liquidityBudget').textContent = Math.round(budgetExpenses).toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
+            document.getElementById('liquidityLoan').textContent = Math.round(loanCosts).toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
+
+            const resultDiv = document.getElementById('liquiditySurplus');
+
+            if (liquidity > 0) {
+                resultDiv.style.color = '#10b981';
+                resultDiv.textContent = '✓ ' + Math.round(liquidity).toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
+            } else {
+                resultDiv.style.color = '#ef4444';
+                resultDiv.textContent = '✗ ' + Math.abs(Math.round(liquidity)).toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr underskudd';
+            }
+
+            // Tegn chart etter en kort forsinkelse for å sikre at canvas er klar
+            setTimeout(() => {
+                drawLiquidityChart(netIncome, budgetExpenses, loanCosts);
+            }, 10);
         }
 
         function handleAdultTaxInput(index) {
@@ -648,7 +673,7 @@
                 taxPercentInput.style.cursor = 'text';
             }
             
-            calculateTotalNetIncome();
+            updateLiquidityDisplay();
         }
 
         function handleAdultTaxPercentInput(index) {
@@ -666,7 +691,7 @@
                 taxAmountInput.style.cursor = 'text';
             }
             
-            calculateTotalNetIncome();
+            updateLiquidityDisplay();
         }
 
         function calculateTotalNetIncome() {
@@ -689,7 +714,6 @@
             }
 
             document.getElementById('totalNetIncome').textContent = Math.round(totalNetIncome).toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
-            calculateLiquidity();
 
             return totalNetIncome;
         }
@@ -700,14 +724,11 @@
             const loanCosts = currentMonthlyLoanCost;
             const liquidity = netIncome - budgetExpenses - loanCosts;
 
-            console.log('calculateLiquidity:', { netIncome, budgetExpenses, loanCosts, liquidity, currentBudgetTotal });
-
             document.getElementById('liquidityIncome').textContent = Math.round(netIncome).toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
             document.getElementById('liquidityBudget').textContent = Math.round(budgetExpenses).toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
             document.getElementById('liquidityLoan').textContent = Math.round(loanCosts).toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
 
             const resultDiv = document.getElementById('liquiditySurplus');
-            resultDiv.textContent = Math.round(liquidity).toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr';
 
             if (liquidity > 0) {
                 resultDiv.style.color = '#10b981';
@@ -717,7 +738,10 @@
                 resultDiv.textContent = '✗ ' + Math.abs(Math.round(liquidity)).toLocaleString('no-NO', { minimumFractionDigits: 0 }) + ' kr underskudd';
             }
 
-            drawLiquidityChart(netIncome, budgetExpenses, loanCosts);
+            // Tegn chart etter en kort forsinkelse for å sikre at canvas er klar
+            setTimeout(() => {
+                drawLiquidityChart(netIncome, budgetExpenses, loanCosts);
+            }, 10);
         }
 
         function updateAdultInputs() {
@@ -882,7 +906,7 @@
 
             // Lagre total budsjett for likviditetsberegning
             currentBudgetTotal = totalBudget;
-            calculateLiquidity();
+            updateLiquidityDisplay();
         }
 
         function calculateLoan() {
@@ -978,7 +1002,7 @@
             // Beregn total månedlig lånekostnad
             const totalMonthlyLoanCost = monthlyPayment + monthlyFee;
             currentMonthlyLoanCost = totalMonthlyLoanCost;
-            calculateLiquidity();
+            updateLiquidityDisplay();
         }
 
         function showRepaymentPlan() {
@@ -1120,42 +1144,90 @@
 
         // Initialize
         updateAdultIncomeInputs();
-        // updateAdultInputs er allerede kalt fra updateAdultIncomeInputs som kalles calculateBudget
         updateChildInputs();
         updateCarInputs();
-        // calculateBudget er allerede kalt fra updateAdultInputs, men vi kaller det igjen for å sikre initialisering
         calculateBudget();
 
         function drawLiquidityChart(income, budgetExpenses, loanCosts) {
             const ctx = document.getElementById('liquidityCanvas');
-            if (!ctx) return;
+            if (!ctx) {
+                console.warn('liquidityCanvas element not found');
+                return;
+            }
 
             const chartCtx = ctx.getContext('2d');
+            if (!chartCtx) {
+                console.warn('Could not get 2d context from canvas');
+                return;
+            }
 
+            // Destroy existing chart if it exists
             if (window.liquidityChartInstance) {
                 window.liquidityChartInstance.destroy();
+            }
+
+            const disponibel = Math.max(income - budgetExpenses - loanCosts, 0);
+            const dataSets = [];
+
+            // Hvis disponibel er 0 eller negativ, vis bare budsjett og lånekostnader
+            if (disponibel <= 0) {
+                const labels = [];
+                const data = [];
+                const colors = [];
+
+                if (budgetExpenses > 0) {
+                    labels.push('Budsjett');
+                    data.push(budgetExpenses);
+                    colors.push('#f97316');
+                }
+                if (loanCosts > 0) {
+                    labels.push('Lånekostnader');
+                    data.push(loanCosts);
+                    colors.push('#ef4444');
+                }
+
+                // Legg til underskudd
+                const deficit = Math.abs(income - budgetExpenses - loanCosts);
+                if (deficit > 0) {
+                    labels.push('Underskudd');
+                    data.push(deficit);
+                    colors.push('#94a3b8');
+                }
+
+                dataSets.push({
+                    data: data.length > 0 ? data : [100],
+                    backgroundColor: colors.length > 0 ? colors : ['#cbd5e1'],
+                    borderColor: ['#ffffff', '#ffffff', '#ffffff', '#ffffff'],
+                    borderWidth: 2
+                });
+            } else {
+                dataSets.push({
+                    data: [disponibel, budgetExpenses, loanCosts],
+                    backgroundColor: ['#10b981', '#f97316', '#ef4444'],
+                    borderColor: ['#ffffff', '#ffffff', '#ffffff'],
+                    borderWidth: 2
+                });
             }
 
             window.liquidityChartInstance = new Chart(chartCtx, {
                 type: 'doughnut',
                 data: {
-                    labels: ['Disponibel', 'Budsjett', 'Lånekostnader'],
-                    datasets: [{
-                        data: [
-                            Math.max(income - budgetExpenses - loanCosts, 0),
-                            budgetExpenses,
-                            loanCosts
-                        ],
-                        backgroundColor: ['#10b981', '#f97316', '#ef4444'],
-                        borderColor: ['#ffffff', '#ffffff', '#ffffff'],
-                        borderWidth: 2
-                    }]
+                    labels: disponibel > 0 ? ['Disponibel', 'Budsjett', 'Lånekostnader'] : ['Budsjett', 'Lånekostnader', 'Underskudd'],
+                    datasets: dataSets
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: true,
                     plugins: {
-                        legend: { position: 'bottom' }
+                        legend: { 
+                            position: 'bottom',
+                            labels: {
+                                padding: 15,
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        }
                     }
                 }
             });
