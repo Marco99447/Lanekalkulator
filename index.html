@@ -855,7 +855,7 @@
 
             let carBudget = 0;
             for (let i = 0; i < numCars; i++) {
-                const carType = document.getElementById(`carType${i}`)?.value || 'Bensin';
+                const carType = document.getElementById(`carType${i}`)?.value || 'Bensin/Diesel';
                 const category = totalPersons <= 4 ? "1-4" : "5-7";
                 carBudget += SIFO_DATA.bilkostnader[carType][category] || 0;
             }
